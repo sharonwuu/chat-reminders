@@ -7,6 +7,11 @@ const SELECTORS = {
   fallbackRow: "[data-message-id], [data-topic-id]",
   // Never offer the button inside the side panel / navigation (space list, etc.).
   excluded: "nav, [role='navigation'], [role='tree'], [role='banner']",
+  // Just the message text (no sender, timestamp or toolbar), inside a messageRow: id="<message id>/qJTHM".
+  // Tried in order (a quoted message inside the row has its own body element, so the exact id comes first).
+  messageBody: (id) => [`[id="${CSS.escape(id)}/qJTHM"]`, "[jsname='bgckF']"],
+  // Image / file attachments of a messageRow: id="<message id>/qDpUz".
+  messageAttachments: (id) => [`[id="${CSS.escape(id)}/qDpUz"]`, "[jsname='KUOBaf']"],
 };
 const SNIPPET_LEN = 400;
 
@@ -137,8 +142,39 @@ function senderOf(row) {
   return "";
 }
 
+// Text of Chat's own message-body element, when it can be found. It holds only what was written (mentions
+// included), so none of the header/timestamp clean-up below is needed.
+// Messages with no words (only a custom emoji, an image or other attachment) are saved as "Image".
+function bodyText(row) {
+  const id = row.getAttribute("data-id");
+  if (!id) return "";
+  const find = (sels) => sels.map((s) => row.querySelector(s)).find(Boolean);
+  const body = find(SELECTORS.messageBody(id));
+  const attachments = find(SELECTORS.messageAttachments(id));
+  const text = body ? textOf(body) : "";
+  if (text) return text;
+  return (body && body.querySelector("img")) || (attachments && attachments.querySelector("img")) ? RTime.t("msg_image") : "";
+}
+
+function textOf(body) {
+  const parts = [];
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) =>
+      n.nodeType === Node.ELEMENT_NODE && n.matches("[aria-hidden='true'], .gcr-label, style, script")
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT,
+  });
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.nodeType === Node.TEXT_NODE) parts.push(n.nodeValue);
+    else if (/^(DIV|P|BR|LI)$/.test(n.tagName)) parts.push(" ");
+  }
+  return tidy(parts.join(""));
+}
+
 function extract(row) {
   const sender = senderOf(row);
+  const body = bodyText(row);
+  if (body) return { text: body.slice(0, SNIPPET_LEN), sender };
   const parts = [];
   const walker = document.createTreeWalker(row, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
     acceptNode: (n) =>
