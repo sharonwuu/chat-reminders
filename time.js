@@ -78,6 +78,17 @@
     return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${formatTime(ms)}`;
   }
 
+  // When a reminder is due, for the lists: "Due in N minutes" under an hour, "Due in N hours" (rounded) up to
+  // RELATIVE_MAX_MIN, the absolute date/time otherwise (including once it's overdue).
+  const RELATIVE_MAX_MIN = 180;
+  function formatDue(when, now) {
+    const min = Math.ceil((when - now) / MIN);
+    if (min <= 0 || min > RELATIVE_MAX_MIN) return formatWhen(when);
+    if (min < 60) return t(min === 1 ? "due_in_min_one" : "due_in_min_other", { n: min });
+    const hr = Math.round(min / 60);
+    return t(hr === 1 ? "due_in_hr_one" : "due_in_hr_other", { n: hr });
+  }
+
   // Chat message id from a reminder's saved link (/room/<space>/<topic>/<message>), or "" for a space/DM link.
   function messageIdOf(url) {
     const m = /\/room\/[^/]+\/[^/]+\/([A-Za-z0-9_-]{8,16})(?:[?#]|$)/.exec(url || "");
@@ -97,7 +108,10 @@
     const out = {};
     for (const [id, r] of Object.entries(nearest)) {
       const overdue = r.when <= now;
-      out[id] = { text: t(overdue ? "label_due" : "label_set", { when: fmt(r.when) }), overdue, ids: ids[id] };
+      // Due soon: same "Due in N minutes/hours" as the lists (content.js re-renders labels every minute).
+      const soon = !overdue && r.when - now <= RELATIVE_MAX_MIN * MIN;
+      const text = soon ? formatDue(r.when, now) : t(overdue ? "label_due" : "label_set", { when: fmt(r.when) });
+      out[id] = { text, overdue, ids: ids[id] };
     }
     return out;
   }
@@ -219,6 +233,10 @@
       in_hr_other: "In {n} hours",
       in_day_one: "In {n} day",
       in_day_other: "In {n} days",
+      due_in_min_one: "Due in {n} minute",
+      due_in_min_other: "Due in {n} minutes",
+      due_in_hr_one: "Due in {n} hour",
+      due_in_hr_other: "Due in {n} hours",
       tomorrow_at: "Tomorrow {time}",
       edit: "Edit",
       done: "Done",
@@ -307,6 +325,10 @@
       in_hr_other: "{n} 小時後",
       in_day_one: "{n} 天後",
       in_day_other: "{n} 天後",
+      due_in_min_one: "{n} 分鐘後到期",
+      due_in_min_other: "{n} 分鐘後到期",
+      due_in_hr_one: "{n} 小時後到期",
+      due_in_hr_other: "{n} 小時後到期",
       tomorrow_at: "明天 {time}",
       edit: "編輯",
       done: "完成",
@@ -359,6 +381,6 @@
     return s.replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? vars[k] : ""));
   }
 
-  root.RTime = { t, lang, setLang, compareVersions, icon, DEFAULT_PRESETS, MAX_PRESETS, sanitizePresets, buildPresets, loadPresets, tomorrowAt, parseLocalInput, toLocalInput, formatWhen, formatTime, messageIdOf, reminderLabels, ceilQuarter, createPicker };
+  root.RTime = { t, lang, setLang, compareVersions, icon, DEFAULT_PRESETS, MAX_PRESETS, sanitizePresets, buildPresets, loadPresets, tomorrowAt, parseLocalInput, toLocalInput, formatWhen, formatDue, formatTime, messageIdOf, reminderLabels, ceilQuarter, createPicker };
   if (typeof module !== "undefined") module.exports = root.RTime;
 })(typeof globalThis !== "undefined" ? globalThis : this);

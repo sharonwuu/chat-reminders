@@ -78,7 +78,7 @@ function row(r) {
   const s = document.createElement("span");
   s.textContent = r.done
     ? RTime.t("completed_at", { when: RTime.formatWhen(r.done) })
-    : RTime.formatWhen(r.when) + (r.source === "message" ? ` · ${RTime.t("from_message")}` : "");
+    : RTime.formatDue(r.when, Date.now()) + (r.source === "message" ? ` · ${RTime.t("from_message")}` : "");
   t.append(b, s);
   li.appendChild(t);
   li.title = RTime.t("open_msg");

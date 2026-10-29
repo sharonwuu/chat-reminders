@@ -755,7 +755,7 @@ if (window.top === window) {
       body.append(el("div", "gcr-p-text", r.text));
       const meta = el("div", "gcr-p-meta");
       if (r.when <= now) meta.append(el("span", "gcr-p-duepill", RTime.t("due")));
-      meta.append(el("span", null, RTime.formatWhen(r.when)));
+      meta.append(el("span", null, RTime.formatDue(r.when, now)));
       body.append(meta);
       const actions = el("div", "gcr-p-actions");
       const snooze = el("button", "gcr-p-snooze", RTime.t("snooze_10"));

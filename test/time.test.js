@@ -44,16 +44,35 @@ const labels = T.reminderLabels(
     c: { when: now - 60e3, url: link("msgBBBBBBBB") },
     d: { when: now + 60e3, url: link("msgCCCCCCCC"), done: now },
     e: { when: now + 60e3, url: "https://chat.google.com/app/chat/sJEKDqAAAAE" },
+    f: { when: now + 4 * 3600e3, url: link("msgDDDDDDDD") },
   },
   now,
   fmt
 );
 assert.deepStrictEqual(labels, {
-  msgAAAAAAAA: { text: `Reminder set for @${now + 30e3}`, overdue: false, ids: ["a", "b"] },
+  msgAAAAAAAA: { text: "Due in 1 minute", overdue: false, ids: ["a", "b"] },
   msgBBBBBBBB: { text: `Reminder due @${now - 60e3}`, overdue: true, ids: ["c"] },
+  msgDDDDDDDD: { text: `Reminder set for @${now + 4 * 3600e3}`, overdue: false, ids: ["f"] },
 });
 assert.deepStrictEqual(T.reminderLabels({}, now, fmt), {});
 assert.ok(T.compareVersions("1.10.0", "1.9.2") > 0);
 assert.ok(T.compareVersions("1.0.0", "1.0.1") < 0);
 assert.strictEqual(T.compareVersions("1.0", "1.0.0"), 0);
+// List times: relative within 3 hours ("Due in N minutes" under an hour, "Due in N hours" up to 3), absolute otherwise.
+{
+  const n0 = new Date(2026, 9, 29, 12, 0).getTime();
+  const M = 60e3;
+  assert.strictEqual(T.formatDue(n0 + 1 * M, n0), "Due in 1 minute");
+  assert.strictEqual(T.formatDue(n0 + 30 * M - 1000, n0), "Due in 30 minutes");
+  assert.strictEqual(T.formatDue(n0 + 59 * M, n0), "Due in 59 minutes");
+  assert.strictEqual(T.formatDue(n0 + 60 * M, n0), "Due in 1 hour");
+  assert.strictEqual(T.formatDue(n0 + 100 * M, n0), "Due in 2 hours");
+  assert.strictEqual(T.formatDue(n0 + 180 * M, n0), "Due in 3 hours");
+  assert.strictEqual(T.formatDue(n0 + 181 * M, n0), T.formatWhen(n0 + 181 * M));
+  assert.strictEqual(T.formatDue(n0 - M, n0), T.formatWhen(n0 - M));
+  T.setLang("zh-TW");
+  assert.strictEqual(T.formatDue(n0 + 30 * M, n0), "30 分鐘後到期");
+  assert.strictEqual(T.formatDue(n0 + 120 * M, n0), "2 小時後到期");
+  T.setLang("en");
+}
 console.log("ok");

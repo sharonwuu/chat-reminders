@@ -37,7 +37,7 @@ async function render() {
       meta.append(due);
     }
     const when = document.createElement("span");
-    when.textContent = RTime.formatWhen(r.when);
+    when.textContent = RTime.formatDue(r.when, now);
     meta.append(when);
     t.append(b, meta);
 
