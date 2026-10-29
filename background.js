@@ -15,19 +15,25 @@ function schedule(r) {
   chrome.alarms.create(r.id, { when: Math.max(r.when, Date.now() + 1000) });
 }
 
+// A message has at most one active reminder: setting another one moves the existing reminder to the new time
+// (and drops any extra copies left from before this rule).
 async function add({ text, sender, when, url, source }) {
+  const all = await load();
+  const [keep, ...extra] = RTime.activeForMessage(all, url);
   const r = {
-    id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    id: keep || `r_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     text: String(text || "Reminder").slice(0, 500),
     sender: String(sender || "").slice(0, 100),
     when,
     url: url || FALLBACK_URL,
     source: source || "manual",
   };
-  const all = await load();
   all[r.id] = r;
+  extra.forEach((id) => delete all[id]);
   await save(all);
   schedule(r);
+  await Promise.all([r.id, ...extra].map((id) => chrome.notifications.clear(id)));
+  await Promise.all(extra.map((id) => chrome.alarms.clear(id)));
   return r;
 }
 

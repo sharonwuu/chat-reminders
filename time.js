@@ -84,6 +84,17 @@
     return m ? m[1] : "";
   }
 
+  // Ids of the active (not done) reminders on the same Chat message as `url`, earliest first. A message gets at
+  // most one active reminder, so these are what a new one replaces. Links without a message id never match.
+  function activeForMessage(reminders, url) {
+    const id = messageIdOf(url);
+    if (!id) return [];
+    return Object.values(reminders || {})
+      .filter((r) => !r.done && messageIdOf(r.url) === id)
+      .sort((a, b) => a.when - b.when)
+      .map((r) => r.id);
+  }
+
   // Labels for messages with an active reminder: { messageId: { text, overdue } }, nearest reminder per message.
   function reminderLabels(reminders, now, fmt = formatWhen) {
     const nearest = {};
@@ -359,6 +370,6 @@
     return s.replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? vars[k] : ""));
   }
 
-  root.RTime = { t, lang, setLang, compareVersions, icon, DEFAULT_PRESETS, MAX_PRESETS, sanitizePresets, buildPresets, loadPresets, tomorrowAt, parseLocalInput, toLocalInput, formatWhen, formatTime, messageIdOf, reminderLabels, ceilQuarter, createPicker };
+  root.RTime = { t, lang, setLang, compareVersions, icon, DEFAULT_PRESETS, MAX_PRESETS, sanitizePresets, buildPresets, loadPresets, tomorrowAt, parseLocalInput, toLocalInput, formatWhen, formatTime, messageIdOf, activeForMessage, reminderLabels, ceilQuarter, createPicker };
   if (typeof module !== "undefined") module.exports = root.RTime;
 })(typeof globalThis !== "undefined" ? globalThis : this);
